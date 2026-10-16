@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1")
 class WordReplaceTest {
@@ -61,6 +62,19 @@ class WordReplaceTest {
         assertThat(changed).isEqualTo(2);
         assertThat(service.get(a).getTitle()).isEqualTo("bhc");
         assertThat(service.get(b).getContent()).isEqualTo("오늘 bhc 먹음");
+    }
+
+    @Test
+    void 도중에_실패하면_앞서_처리한_글도_모두_롤백된다() {
+        Long ok = save("kfc", "내용");
+        // 치환 후 제목이 100자를 넘어 저장 검증에 실패하는 글
+        Long tooLong = save("kfc" + "a".repeat(95), "내용");
+
+        assertThatThrownBy(() -> service.replaceWord(List.of(ok, tooLong), "kfc", "bhcbhcbhc"))
+                .isInstanceOf(Exception.class);
+
+        assertThat(service.get(ok).getTitle()).isEqualTo("kfc");
+        assertThat(service.get(tooLong).getTitle()).startsWith("kfc");
     }
 
     @Test
