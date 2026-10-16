@@ -51,7 +51,7 @@ public class PostService {
         return repository.findIdsByWord(word);
     }
 
-    /** 지정한 글들의 title/content에서 before를 after로 변경. 없는 id는 건너뛰고, 변경된 글 수를 반환 */
+    /** 지정한 글들의 title/content에서 before를 after로 변경. 없는 id와 내용이 달라지지 않는 글은 건너뛰고, 실제 변경된 글 수를 반환 */
     public int replaceWord(List<Long> ids, String before, String after) {
         int changed = 0;
         for (Long id : ids) {
@@ -60,10 +60,15 @@ public class PostService {
                 continue;
             }
             Post post = found.get();
+            String newTitle = post.getTitle().replace(before, after);
+            String newContent = post.getContent().replace(before, after);
+            if (newTitle.equals(post.getTitle()) && newContent.equals(post.getContent())) {
+                continue;
+            }
             Post form = new Post();
-            form.setTitle(post.getTitle().replace(before, after));
+            form.setTitle(newTitle);
             form.setName(post.getName());
-            form.setContent(post.getContent().replace(before, after));
+            form.setContent(newContent);
             update(id, form);
             changed++;
         }
