@@ -6,7 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -43,6 +45,36 @@ public class PostService {
 
     public void delete(Long id) {
         repository.deleteById(id);
+    }
+
+    /** title 또는 content에 word가 포함된 글 id 목록 */
+    public List<Long> searchIdsByWord(String word) {
+        return repository.findIdsByWord(word);
+    }
+
+    /** 지정한 글들의 title/content에서 before를 after로 변경. 없는 id와 내용이 달라지지 않는 글은 건너뛰고, 실제 변경된 글 수를 반환 */
+    @Transactional
+    public int replaceWord(List<Long> ids, String before, String after) {
+        int changed = 0;
+        for (Long id : ids) {
+            Optional<Post> found = repository.findById(id);
+            if (found.isEmpty()) {
+                continue;
+            }
+            Post post = found.get();
+            String newTitle = post.getTitle().replace(before, after);
+            String newContent = post.getContent().replace(before, after);
+            if (newTitle.equals(post.getTitle()) && newContent.equals(post.getContent())) {
+                continue;
+            }
+            Post form = new Post();
+            form.setTitle(newTitle);
+            form.setName(post.getName());
+            form.setContent(newContent);
+            update(id, form);
+            changed++;
+        }
+        return changed;
     }
 
     public Optional<Post> findLatest() {
